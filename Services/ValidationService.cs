@@ -34,7 +34,7 @@ public class KLineResult
 
 public interface IValidationService
 {
-    Task<BacktestResult> ValidateAsync(StrategySummary summary, DateTime tradeDate);
+    Task<BacktestResult> ValidateAsync(StrategySummary summary, DateTime tradeDate, CancellationToken cancellationToken = default);
 }
 
 public class ValidationService : IValidationService
@@ -154,7 +154,7 @@ public class ValidationService : IValidationService
         _marketDataService = marketDataService;
     }
 
-    public async Task<BacktestResult> ValidateAsync(StrategySummary summary, DateTime tradeDate)
+    public async Task<BacktestResult> ValidateAsync(StrategySummary summary, DateTime tradeDate, CancellationToken cancellationToken = default)
     {
         // 提取合约代码（移除中文名称和括号）
         var contractCode = ExtractContractCode(summary.Contract);
@@ -204,7 +204,14 @@ public class ValidationService : IValidationService
             contractCode, 
             startDate, 
             endDate, 
-            KLinePeriod.Min15);
+            KLinePeriod.Min15,
+            cancellationToken);
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            result.Result = "已取消";
+            return result;
+        }
 
         if (kLines.Count == 0)
         {

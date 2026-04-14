@@ -23,6 +23,7 @@ public partial class MainViewModel : ObservableObject
     private readonly IValidationService _validationService;
     private readonly ISettingsService _settingsService;
     private readonly ApiService _apiService;
+    private CancellationTokenSource? _validationCts;
 
     [ObservableProperty]
     private ObservableCollection<StrategyListItem> _strategies = new();
@@ -180,12 +181,17 @@ public partial class MainViewModel : ObservableObject
 
     public void SelectContract(ContractSelection contract)
     {
+        // 取消之前的验证任务，防止竞态条件
+        _validationCts?.Cancel();
+        _validationCts = new CancellationTokenSource();
+        var token = _validationCts.Token;
+
         SelectedContract = contract;
 
         // 如果当前策略没有 SummaryItems，需要先加载策略详情
         if (CurrentStrategy != null && CurrentStrategy.SummaryItems.Count == 0)
         {
-            _ = LoadStrategyDetailAndSelectContractAsync(contract);
+            _ = LoadStrategyDetailAndSelectContractAsync(contract, token);
         }
         else
         {
@@ -197,11 +203,11 @@ public partial class MainViewModel : ObservableObject
                 CurrentContractSummary = summary;
             }
             // 触发品种验证
-            _ = ValidateContractAsync(contract);
+            _ = ValidateContractAsync(contract, token);
         }
     }
 
-    private async Task LoadStrategyDetailAndSelectContractAsync(ContractSelection contract)
+    private async Task LoadStrategyDetailAndSelectContractAsync(ContractSelection contract, CancellationToken token)
     {
         try
         {
@@ -209,6 +215,8 @@ public partial class MainViewModel : ObservableObject
             StatusMessage = $"正在加载策略详情 {contract.StrategyId}...";
 
             CurrentStrategy = await _strategyService.GetStrategyAsync(contract.StrategyId);
+
+            if (token.IsCancellationRequested) return;
 
             if (CurrentStrategy != null)
             {
@@ -224,13 +232,20 @@ public partial class MainViewModel : ObservableObject
                 }
 
                 // 触发品种验证
-                await ValidateContractAsync(contract);
-                StatusMessage = $"策略已加载";
+                await ValidateContractAsync(contract, token);
+                if (!token.IsCancellationRequested)
+                {
+                    StatusMessage = $"策略已加载";
+                }
             }
             else
             {
                 StatusMessage = "策略加载失败";
             }
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "操作已取消";
         }
         catch (Exception ex)
         {
@@ -273,7 +288,7 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    private async Task ValidateContractAsync(ContractSelection contractSelection)
+    private async Task ValidateContractAsync(ContractSelection contractSelection, CancellationToken token)
     {
         if (CurrentStrategy == null)
         {
@@ -302,10 +317,13 @@ public partial class MainViewModel : ObservableObject
                 return;
             }
 
-            BacktestResult = await _validationService.ValidateAsync(contractInfo, CurrentStrategy.TradeDate);
+            var backtestResult = await _validationService.ValidateAsync(contractInfo, CurrentStrategy.TradeDate);
 
-            if (BacktestResult != null)
+            if (token.IsCancellationRequested) return;
+
+            if (backtestResult != null)
             {
+                BacktestResult = backtestResult;
                 UpdateChartData();
                 StatusMessage = $"回测完成：{BacktestResult.Result} ({BacktestResult.PnL:F2})";
             }
@@ -313,6 +331,10 @@ public partial class MainViewModel : ObservableObject
             {
                 StatusMessage = "无法获取行情数据，请检查配置";
             }
+        }
+        catch (OperationCanceledException)
+        {
+            StatusMessage = "操作已取消";
         }
         catch (Exception ex)
         {
