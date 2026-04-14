@@ -1,0 +1,31 @@
+<Application x:Class="StrategyViewer.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:converters="clr-namespace:StrategyViewer.Converters">
+    <Application.Resources>
+        <ResourceDictionary>
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+            <converters:InverseNullToVisibilityConverter x:Key="InverseNullToVisibilityConverter"/>
+            <converters:DirectionColorConverter x:Key="DirectionColorConverter"/>
+            <converters:PnLColorConverter x:Key="PnLColorConverter"/>
+            <converters:ResultColorConverter x:Key="ResultColorConverter"/>
+            <converters:BoolToHitConverter x:Key="BoolToHitConverter"/>
+            <converters:GroupHeaderConverter x:Key="GroupHeaderConverter"/>
+            <converters:GroupHeaderVisibilityConverter x:Key="GroupHeaderVisibilityConverter"/>
+            <converters:StrategyItemVisibilityConverter x:Key="StrategyItemVisibilityConverter"/>
+            <converters:GroupItemPaddingConverter x:Key="GroupItemPaddingConverter"/>
+
+            <SolidColorBrush x:Key="BackgroundBrush" Color="#1e1e2e"/>
+            <SolidColorBrush x:Key="SurfaceBrush" Color="#313244"/>
+            <SolidColorBrush x:Key="SurfaceLightBrush" Color="#45475a"/>
+            <SolidColorBrush x:Key="TextBrush" Color="#cdd6f4"/>
+            <SolidColorBrush x:Key="TextMutedBrush" Color="#6c7086"/>
+            <SolidColorBrush x:Key="PrimaryBrush" Color="#89b4fa"/>
+            <SolidColorBrush x:Key="SuccessBrush" Color="#a6e3a1"/>
+            <SolidColorBrush x:Key="WarningBrush" Color="#f9e2af"/>
+            <SolidColorBrush x:Key="ErrorBrush" Color="#f38ba8"/>
+            <SolidColorBrush x:Key="InfoBrush" Color="#89dceb"/>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
