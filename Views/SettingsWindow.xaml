@@ -1,7 +1,7 @@
 <Window x:Class="StrategyViewer.Views.SettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="服务器设置" Height="480" Width="500"
+        Title="服务器设置" Height="850" Width="500"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         Background="#1e1e2e">
@@ -60,7 +60,8 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <StackPanel>
+        <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel>
             <TextBlock Text="策略信号服务器" FontSize="16" FontWeight="Bold" Margin="0,0,0,12" Foreground="#89b4fa"/>
 
             <GroupBox Header="策略服务器配置">
@@ -95,7 +96,62 @@
                     <TextBox x:Name="StopLossAmountTextBox" Width="100" HorizontalAlignment="Left"/>
                 </StackPanel>
             </GroupBox>
+
+            <TextBlock Text="飞书通知" FontSize="16" FontWeight="Bold" Margin="0,0,0,12" Foreground="#89b4fa"/>
+
+            <GroupBox Header="飞书机器人配置">
+                <StackPanel>
+                    <CheckBox x:Name="FeishuEnabledCheckBox" Content="启用飞书通知" Foreground="#cdd6f4" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="Webhook 地址" Margin="0,0,0,4"/>
+                    <TextBox x:Name="FeishuWebhookTextBox" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="机器人名称" Margin="0,0,0,4"/>
+                    <TextBox x:Name="FeishuBotNameTextBox"/>
+                    <TextBlock Text="显示在飞书消息中的机器人名称" Foreground="#6c7086" FontSize="11" Margin="0,4,0,0"/>
+                </StackPanel>
+            </GroupBox>
+
+            <TextBlock Text="飞书图片发送" FontSize="16" FontWeight="Bold" Margin="0,0,0,12" Foreground="#89b4fa"/>
+
+            <GroupBox Header="飞书传图机器人配置">
+                <StackPanel>
+                    <CheckBox x:Name="FeishuImageEnabledCheckBox" Content="启用飞书传图" Foreground="#cdd6f4" Margin="0,0,0,12"/>
+                    <TextBlock Text="使用飞书机器人发送矩阵图片，支持更丰富的展示效果" Foreground="#6c7086" FontSize="11" Margin="0,-4,0,12"/>
+
+                    <TextBlock Text="App ID" Margin="0,0,0,4"/>
+                    <TextBox x:Name="FeishuImageAppIdTextBox" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="App Secret" Margin="0,0,0,4"/>
+                    <TextBox x:Name="FeishuImageAppSecretTextBox" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="Chat ID" Margin="0,0,0,4"/>
+                    <TextBox x:Name="FeishuImageChatIdTextBox" Margin="0,0,0,12"/>
+
+                    <CheckBox x:Name="FeishuImageUseCardCheckBox" Content="在图片上方添加卡片标题" Foreground="#cdd6f4" IsChecked="True"/>
+                    <TextBlock Text="启用后会在图片上方显示标题、时间和免责声明" Foreground="#6c7086" FontSize="11" Margin="0,4,0,0"/>
+                </StackPanel>
+            </GroupBox>
+
+            <TextBlock Text="Telegram 通知" FontSize="16" FontWeight="Bold" Margin="0,0,0,12" Foreground="#89b4fa"/>
+
+            <GroupBox Header="Telegram 机器人配置">
+                <StackPanel>
+                    <CheckBox x:Name="TelegramEnabledCheckBox" Content="启用 Telegram 通知" Foreground="#cdd6f4" Margin="0,0,0,12"/>
+
+                    <TextBlock Text="Bot Token" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TelegramBotTokenTextBox" Margin="0,0,0,12"/>
+                    <TextBlock Text="从 @BotFather 获取的 Token" Foreground="#6c7086" FontSize="11" Margin="0,-8,0,8"/>
+
+                    <TextBlock Text="Chat ID（支持多个，用分号分隔）" Margin="0,0,0,4"/>
+                    <TextBox x:Name="TelegramChatIdTextBox" Height="60" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,0,0,8"/>
+                    <TextBlock Text="格式如: -1001234567890;-1009876543210" Foreground="#6c7086" FontSize="11" Margin="0,0,0,8"/>
+
+                    <Button x:Name="TestTelegramButton" Content="测试 Telegram 连接" Click="TestTelegram_Click" Style="{StaticResource SecondaryButton}" HorizontalAlignment="Left"/>
+                </StackPanel>
+            </GroupBox>
         </StackPanel>
+        </ScrollViewer>
 
         <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
             <Button Content="测试连接" Click="TestConnection_Click" Style="{StaticResource SecondaryButton}" Margin="0,0,12,0"/>

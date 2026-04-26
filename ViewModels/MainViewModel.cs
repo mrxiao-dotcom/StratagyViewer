@@ -23,6 +23,8 @@ public partial class MainViewModel : ObservableObject
     private readonly IValidationService _validationService;
     private readonly ISettingsService _settingsService;
     private readonly ApiService _apiService;
+    private readonly IContractParserService _contractParserService;
+    private readonly ICacheService _cacheService;
     private CancellationTokenSource? _validationCts;
 
     [ObservableProperty]
@@ -97,18 +99,25 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private Axis[] _equityYAxes = Array.Empty<Axis>();
 
+    [ObservableProperty]
+    private bool _isCacheLoaded;
+
     public MainViewModel(
         IStrategyService strategyService,
         IMarketDataService marketDataService,
         IValidationService validationService,
         ISettingsService settingsService,
-        ApiService apiService)
+        ApiService apiService,
+        IContractParserService contractParserService,
+        ICacheService cacheService)
     {
         _strategyService = strategyService;
         _marketDataService = marketDataService;
         _validationService = validationService;
         _settingsService = settingsService;
         _apiService = apiService;
+        _contractParserService = contractParserService;
+        _cacheService = cacheService;
 
         CheckServerConfiguration();
         _ = LoadStrategiesAsync();
@@ -142,27 +151,125 @@ public partial class MainViewModel : ObservableObject
             IsLoading = true;
             StatusMessage = "正在加载策略列表...";
 
-            var strategyList = await _strategyService.GetStrategiesAsync();
+            // 强制从 API 获取最新数据
+            System.Diagnostics.Debug.WriteLine("[策略] 强制从 API 获取最新数据");
+            var response = await _apiService.GetAsync<ApiResponse<List<StrategyListItem>>>("/api/strategy");
+            var strategyList = response?.Data ?? new List<StrategyListItem>();
+
+            // 更新内存缓存
+            _strategyService.UpdateStrategiesCache(strategyList);
+
             Strategies.Clear();
             foreach (var strategy in strategyList)
             {
                 Strategies.Add(strategy);
             }
-
             StrategyGroups = StrategyGroupCollection.CreateFrom(Strategies);
 
+            var lastRefreshTime = _cacheService.GetLastRefreshTime();
+            var localContracts = _cacheService.LoadContracts() ?? new List<Models.ContractHistory>();
+
+            // 获取本地缓存中最新的交易日期
+            var cachedMaxTradeDate = localContracts.Count > 0
+                ? localContracts.Max(c => c.TradeDate.Date)
+                : (DateTime?)null;
+
+            // 检查是否有新增或更新的策略
+            var needRefresh = lastRefreshTime == null || strategyList.Any(s =>
+                (s.CreatedAt > lastRefreshTime.Value) ||
+                (s.UpdatedAt.HasValue && s.UpdatedAt.Value > lastRefreshTime.Value) ||
+                (s.TradeDate.Date > (cachedMaxTradeDate ?? DateTime.MinValue)));
+
+            if (!needRefresh && localContracts.Count > 0)
+            {
+                System.Diagnostics.Debug.WriteLine($"[缓存] 从本地缓存加载了 {localContracts.Count} 条合约历史 (最新交易日期: {cachedMaxTradeDate:yyyy-MM-dd})");
+                _cachedAllContracts = localContracts;
+            }
+            else
+            {
+                // 增量更新
+                StatusMessage = "正在增量更新策略...";
+                var newContracts = new List<Models.ContractHistory>();
+                var updatedCount = 0;
+                var newCount = 0;
+
+                foreach (var strategy in strategyList)
+                {
+                    bool needsUpdate = lastRefreshTime == null ||
+                                       strategy.CreatedAt > lastRefreshTime.Value ||
+                                       (strategy.UpdatedAt.HasValue && strategy.UpdatedAt.Value > lastRefreshTime.Value) ||
+                                       strategy.TradeDate.Date > (cachedMaxTradeDate ?? DateTime.MinValue);
+
+                    if (needsUpdate)
+                    {
+                        localContracts.RemoveAll(c => c.StrategyId == strategy.Id);
+
+                        var detail = await _strategyService.GetStrategyAsync(strategy.Id);
+                        if (detail?.SummaryItems != null)
+                        {
+                            foreach (var item in detail.SummaryItems)
+                            {
+                                var contractHistory = new Models.ContractHistory
+                                {
+                                    TradeDate = detail.TradeDate,
+                                    StrategyId = strategy.Id,
+                                    StrategyTitle = strategy.Title,
+                                    Contract = item.Contract ?? "",
+                                    Direction = item.Direction ?? "",
+                                    EntryRange = item.EntryRange ?? "",
+                                    StopLoss = item.StopLoss,
+                                    TakeProfit = item.TakeProfit,
+                                    Logic = item.Logic
+                                };
+                                localContracts.Add(contractHistory);
+                                newContracts.Add(contractHistory);
+
+                                if (lastRefreshTime != null && strategy.CreatedAt <= lastRefreshTime.Value)
+                                    updatedCount++;
+                                else
+                                    newCount++;
+                            }
+                        }
+
+                        StatusMessage = $"更新中... 新增{newCount}，更新{updatedCount}";
+                    }
+                }
+
+                _cacheService.SaveContracts(localContracts);
+                _cacheService.SetLastRefreshTime(DateTime.Now);
+                _cachedAllContracts = localContracts;
+
+                System.Diagnostics.Debug.WriteLine($"[缓存] 增量更新完成：新增{newCount}条，更新{updatedCount}条");
+                StatusMessage = $"已更新 {Strategies.Count} 个策略（新增{newCount}，更新{updatedCount}）";
+            }
+
             StrategyStats = await _strategyService.GetStatsAsync();
-            StatusMessage = $"已加载 {Strategies.Count} 个策略";
         }
         catch (Exception ex)
         {
             StatusMessage = $"加载失败：{ex.Message}";
+            System.Diagnostics.Debug.WriteLine($"[错误] 加载失败：{ex.Message}");
         }
         finally
         {
             IsLoading = false;
+            IsCacheLoaded = true;
         }
     }
+
+    [RelayCommand]
+    private void ClearCache()
+    {
+        _strategyService.ClearCache();
+        _cachedAllContracts = null;
+        StatusMessage = "缓存已清空，请重新加载";
+        IsCacheLoaded = false;
+    }
+
+    // 缓存所有合约历史（用于列表视图）
+    private List<Models.ContractHistory>? _cachedAllContracts;
+
+    public List<Models.ContractHistory>? GetAllCachedContracts() => _cachedAllContracts;
 
     partial void OnSelectedStrategyChanged(StrategyListItem? value)
     {
@@ -468,7 +575,12 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-[RelayCommand]
+    public IStrategyService GetStrategyService() => _strategyService;
+    public IMarketDataService GetMarketDataService() => _marketDataService;
+    public IContractParserService GetContractParserService() => _contractParserService;
+    public ISettingsService GetSettingsService() => _settingsService;
+
+    [RelayCommand]
 private void OpenSettings()
 {
     var settingsWindow = new SettingsWindow(_settingsService, _apiService);
@@ -477,6 +589,77 @@ private void OpenSettings()
     {
         CheckServerConfiguration();
         StatusMessage = "设置已保存";
+    }
+}
+
+public void SelectContractFromHistory(ContractHistory history)
+{
+    // 查找对应的策略
+    var strategyItem = Strategies.FirstOrDefault(s => s.Id == history.StrategyId);
+    if (strategyItem != null)
+    {
+        // 先选中策略
+        SelectStrategy(strategyItem);
+
+        // 创建一个 ContractSelection 对象
+        var contract = new ContractSelection
+        {
+            StrategyId = history.StrategyId,
+            Contract = history.Contract,
+            Direction = history.Direction
+        };
+
+        // 等待策略加载完成后选中品种
+        _ = LoadStrategyAndSelectContractAsync(history.StrategyId, history);
+    }
+    else
+    {
+        StatusMessage = "未找到对应的策略";
+    }
+}
+
+private async Task LoadStrategyAndSelectContractAsync(int strategyId, ContractHistory history)
+{
+    try
+    {
+        IsLoading = true;
+        var strategy = await _strategyService.GetStrategyAsync(strategyId);
+        if (strategy != null)
+        {
+            // 更新策略的 SummaryItems
+            var strategyItem = Strategies.FirstOrDefault(s => s.Id == strategyId);
+            if (strategyItem != null)
+            {
+                strategyItem.UpdateSummaryItems(strategy.SummaryItems);
+            }
+
+            // 查找匹配的品种
+            var summaryItem = strategy.SummaryItems.FirstOrDefault(s =>
+                s.Direction == history.Direction && s.Contract == history.Contract);
+
+            if (summaryItem != null)
+            {
+                var contract = new ContractSelection
+                {
+                    StrategyId = strategyId,
+                    Contract = summaryItem.Contract,
+                    Direction = summaryItem.Direction
+                };
+                SelectContract(contract);
+            }
+            else
+            {
+                StatusMessage = "未找到匹配的品种";
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        StatusMessage = $"加载失败: {ex.Message}";
+    }
+    finally
+    {
+        IsLoading = false;
     }
 }
 }

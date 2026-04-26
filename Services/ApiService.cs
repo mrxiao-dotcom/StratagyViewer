@@ -13,7 +13,7 @@ public class ApiService
     public ApiService(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.Timeout = TimeSpan.FromSeconds(30);
+        _httpClient.Timeout = TimeSpan.FromSeconds(120);
     }
 
     public void Configure(string baseUrl, string token)

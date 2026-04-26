@@ -12,6 +12,9 @@ public interface ISettingsService
     void UpdateStrategyServer(string baseUrl, string token);
     void UpdateMarketDataServer(string baseUrl, string? token = null);
     void UpdateValidationSettings(int analysisDays, decimal stopLossAmount = 10000m);
+    void UpdateFeishuSettings(bool isEnabled, string webhookUrl, string botName);
+    void UpdateFeishuImageSettings(bool isEnabled, string appId, string appSecret, string chatId, bool useCardWithImage);
+    void UpdateTelegramSettings(bool isEnabled, string botToken, List<string> chatIds);
 }
 
 public class SettingsService : ISettingsService
@@ -76,6 +79,32 @@ public class SettingsService : ISettingsService
     {
         Settings.ValidationSettings.AnalysisDays = analysisDays;
         Settings.ValidationSettings.SingleTradeStopLossAmount = stopLossAmount;
+        Save();
+    }
+
+    public void UpdateFeishuSettings(bool isEnabled, string webhookUrl, string botName)
+    {
+        Settings.FeishuSettings.IsEnabled = isEnabled;
+        Settings.FeishuSettings.WebhookUrl = webhookUrl;
+        Settings.FeishuSettings.BotName = botName;
+        Save();
+    }
+
+    public void UpdateFeishuImageSettings(bool isEnabled, string appId, string appSecret, string chatId, bool useCardWithImage)
+    {
+        Settings.FeishuImageSettings.IsEnabled = isEnabled;
+        Settings.FeishuImageSettings.AppId = appId;
+        Settings.FeishuImageSettings.AppSecret = appSecret;
+        Settings.FeishuImageSettings.ChatId = chatId;
+        Settings.FeishuImageSettings.UseCardWithImage = useCardWithImage;
+        Save();
+    }
+
+    public void UpdateTelegramSettings(bool isEnabled, string botToken, List<string> chatIds)
+    {
+        Settings.TelegramSettings.IsEnabled = isEnabled;
+        Settings.TelegramSettings.BotToken = botToken;
+        Settings.TelegramSettings.ChatIds = chatIds.Where(c => !string.IsNullOrWhiteSpace(c)).ToList();
         Save();
     }
 }

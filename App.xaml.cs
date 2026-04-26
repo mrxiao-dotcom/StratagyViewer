@@ -10,6 +10,11 @@ public partial class App : Application
 {
     private ServiceProvider? _serviceProvider;
 
+    public T GetService<T>() where T : class
+    {
+        return _serviceProvider?.GetRequiredService<T>() ?? throw new InvalidOperationException($"Service {typeof(T).Name} not found");
+    }
+
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
@@ -40,6 +45,9 @@ public partial class App : Application
         services.AddSingleton<IMarketDataService, MarketDataService>();
         services.AddSingleton<IContractParserService, ContractParserService>();
         services.AddSingleton<IValidationService, ValidationService>();
+        services.AddSingleton<IFeishuService, FeishuService>();
+        services.AddSingleton<ITelegramService, TelegramService>();
+        services.AddSingleton<ICacheService, CacheService>();
         services.AddTransient<MainViewModel>();
     }
 

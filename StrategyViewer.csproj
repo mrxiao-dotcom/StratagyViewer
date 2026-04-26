@@ -11,6 +11,7 @@
     <Company>StrategyViewer</Company>
     <Product>策略验证工具</Product>
     <Version>1.0.0</Version>
+    <ApplicationIcon>ImageIcon_20260424_185348.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

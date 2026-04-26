@@ -5,8 +5,10 @@
     <Application.Resources>
         <ResourceDictionary>
             <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
             <converters:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
             <converters:InverseNullToVisibilityConverter x:Key="InverseNullToVisibilityConverter"/>
+            <converters:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
             <converters:DirectionColorConverter x:Key="DirectionColorConverter"/>
             <converters:PnLColorConverter x:Key="PnLColorConverter"/>
             <converters:ResultColorConverter x:Key="ResultColorConverter"/>

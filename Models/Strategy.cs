@@ -39,10 +39,52 @@ public class Strategy
     public DateTime? UpdatedAt { get; set; }
     public int ItemCount { get; set; }
 
-    public List<StrategySummary> SummaryItems =>
-        string.IsNullOrEmpty(Summary)
-            ? new List<StrategySummary>()
-            : System.Text.Json.JsonSerializer.Deserialize<List<StrategySummary>>(Summary) ?? new List<StrategySummary>();
+    public List<StrategySummary> SummaryItems
+    {
+        get
+        {
+            if (string.IsNullOrEmpty(Summary))
+                return new List<StrategySummary>();
+
+            try
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<List<StrategySummary>>(Summary)
+                    ?? new List<StrategySummary>();
+            }
+            catch (System.Text.Json.JsonException ex)
+            {
+                // 尝试修复常见的 JSON 格式问题
+                var fixedJson = FixJsonFormat(Summary);
+                if (fixedJson != Summary)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[JSON修复] 检测到格式问题，正在修复...");
+                    try
+                    {
+                        return System.Text.Json.JsonSerializer.Deserialize<List<StrategySummary>>(fixedJson)
+                            ?? new List<StrategySummary>();
+                    }
+                    catch (System.Text.Json.JsonException ex2)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[JSON修复失败] 异常: {ex2.Message}");
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine($"[JSON解析错误] Summary内容长度: {Summary?.Length ?? 0}");
+                System.Diagnostics.Debug.WriteLine($"[JSON解析错误] 异常: {ex.Message}");
+                return new List<StrategySummary>();
+            }
+        }
+    }
+
+    private static string FixJsonFormat(string json)
+    {
+        // 修复缺少引号的数值：如 "stopLoss":300" -> "stopLoss":"300"
+        var fixedResult = System.Text.RegularExpressions.Regex.Replace(
+            json,
+            @"""(\w+)""?\s*:\s*(\d+)""?",
+            @"""$1"": ""$2""");
+        return fixedResult;
+    }
 }
 
 public class StrategyListItem
@@ -51,6 +93,7 @@ public class StrategyListItem
     public string Title { get; set; } = string.Empty;
     public DateTime TradeDate { get; set; }
     public DateTime CreatedAt { get; set; }
+    public DateTime? UpdatedAt { get; set; }
     public int ItemCount { get; set; }
     public string? Summary { get; set; }
     public string? Content { get; set; }
@@ -69,10 +112,32 @@ public class StrategyListItem
                 {
                     return System.Text.Json.JsonSerializer.Deserialize<List<StrategySummary>>(json) ?? _loadedSummaryItems;
                 }
-                catch { }
+                catch (System.Text.Json.JsonException)
+                {
+                    var fixedJson = FixJsonFormat(json);
+                    if (fixedJson != json)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[JSON修复 StrategyListItem] 检测到格式问题，正在修复...");
+                        try
+                        {
+                            return System.Text.Json.JsonSerializer.Deserialize<List<StrategySummary>>(fixedJson)
+                                ?? _loadedSummaryItems;
+                        }
+                        catch { }
+                    }
+                }
             }
             return _loadedSummaryItems;
         }
+    }
+
+    private static string FixJsonFormat(string json)
+    {
+        var fixedResult = System.Text.RegularExpressions.Regex.Replace(
+            json,
+            @"""(\w+)""?\s*:\s*(\d+)""?",
+            @"""$1"": ""$2""");
+        return fixedResult;
     }
 
     public void UpdateSummaryItems(List<StrategySummary> items)
@@ -107,6 +172,7 @@ public class ContractHistory
     public DateTime TradeDate { get; set; }
     public int StrategyId { get; set; }
     public string StrategyTitle { get; set; } = string.Empty;
+    public string Contract { get; set; } = string.Empty;
     public string Direction { get; set; } = string.Empty;
     public string EntryRange { get; set; } = string.Empty;
     public string? StopLoss { get; set; }

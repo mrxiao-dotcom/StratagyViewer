@@ -276,6 +276,52 @@ public partial class MainWindow : Window
         }
     }
 
+    private void OpenContractSearch_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel viewModel)
+        {
+            var searchWindow = new ContractSearchWindow(
+                viewModel.GetStrategyService(),
+                viewModel.GetMarketDataService(),
+                viewModel.GetContractParserService());
+            searchWindow.Owner = this;
+            if (searchWindow.ShowDialog() == true && searchWindow.SelectedContract != null)
+            {
+                var contract = searchWindow.SelectedContract;
+                System.Diagnostics.Debug.WriteLine($"[搜索] 选中品种: {contract.StrategyTitle} - {contract.TradeDate}");
+
+                // 定位到对应的策略和品种
+                viewModel.SelectContractFromHistory(contract);
+            }
+        }
+    }
+
+    private void OpenDirectionMatrix_Click(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel viewModel)
+        {
+            var cachedContracts = viewModel.GetAllCachedContracts();
+            if (cachedContracts == null || cachedContracts.Count == 0)
+            {
+                System.Windows.MessageBox.Show("缓存数据为空，请重新加载", "提示", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
+            var feishuService = ((App)System.Windows.Application.Current).GetService<IFeishuService>();
+            var telegramService = ((App)System.Windows.Application.Current).GetService<ITelegramService>();
+            var settingsService = viewModel.GetSettingsService();
+
+            var matrixWindow = new DirectionMatrixWindow(
+                viewModel.GetContractParserService(),
+                cachedContracts,
+                feishuService,
+                telegramService,
+                settingsService);
+            matrixWindow.Owner = this;
+            matrixWindow.Show();
+        }
+    }
+
     private void ContractItem_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ClickCount == 2)

@@ -128,6 +128,7 @@
 
                 <StackPanel Orientation="Horizontal" Grid.Column="2">
                     <Button Content="刷新策略" Command="{Binding LoadStrategiesCommand}" Style="{StaticResource SecondaryButton}" Margin="0,0,12,0"/>
+                    <Button Content="清空缓存" Command="{Binding ClearCacheCommand}" Style="{StaticResource SecondaryButton}" Margin="0,0,12,0" ToolTip="清空本地缓存数据"/>
                     <Button Content="服务器设置" Command="{Binding OpenSettingsCommand}" Style="{StaticResource SecondaryButton}"/>
                 </StackPanel>
             </Grid>
@@ -150,7 +151,24 @@
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
 
-                    <TextBlock Text="策略列表" Style="{StaticResource HeaderText}"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="策略列表" Style="{StaticResource HeaderText}"/>
+
+                            <Button Grid.Column="1" Content="列表视图" Click="OpenDirectionMatrix_Click"
+                                    Style="{StaticResource SecondaryButton}" Padding="12,6" FontSize="12"
+                                    VerticalAlignment="Center" Margin="0,0,8,0"
+                                    IsEnabled="{Binding IsCacheLoaded}"/>
+
+                            <Button Grid.Column="2" Content="搜索品种" Click="OpenContractSearch_Click"
+                                    Style="{StaticResource SecondaryButton}" Padding="12,6" FontSize="12"
+                                    VerticalAlignment="Center"/>
+                        </Grid>
 
                     <TreeView Grid.Row="1" x:Name="StrategyTreeView"
                               ItemsSource="{Binding StrategyGroups}"
